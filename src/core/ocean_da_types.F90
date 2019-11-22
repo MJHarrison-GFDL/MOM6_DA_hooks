@@ -9,6 +9,7 @@ module ocean_da_types_mod
 ! matthew.harrison@noaa.gov
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 #ifndef MAX_LEVS_FILE_
 #define MAX_LEVS_FILE_ 50
 #endif
@@ -22,10 +23,9 @@ module ocean_da_types_mod
 ! for oda modules.
 !============================================================
 
-! Contact: Matthew.Harrison@noaa.gov and Feiyu.Lu@noaa.gov
+! Contact: Matthew.Harrison@noaa.gov and Feiyu.Lu@noaa.goy
 
   use time_manager_mod, only : time_type
-  !use obs_tools_mod, only : obs_def_type
   !use mpp_domains_mod, only : domain2d
 
   implicit none
@@ -39,6 +39,10 @@ module ocean_da_types_mod
   integer, save, public :: TEMP_ID = 1
   integer, save, public :: SALT_ID = 2
   real, parameter, public :: MISSING_VALUE = -1.e10
+  integer, save, public :: ODA_PFL = 1
+  integer, save, public :: ODA_XBT = 2
+  integer, save, public :: ODA_MRB = 3
+  integer, save, public :: ODA_OISST = 4
 
 !> Type for ocean state in DA space (same decomposition and vertical grid)
   type, public :: OCEAN_CONTROL_STRUCT
@@ -57,14 +61,6 @@ module ocean_da_types_mod
   type, public :: ocean_profile_type
      integer :: variable !< variable ids are defined by the ocean_types module (e.g. TEMP_ID, SALT_ID)
      integer :: inst_type !< instrument types are defined by platform class (e.g. MOORING, DROP, etc.) and instrument type (XBT, CDT, etc.)
-     integer :: nvar !< number of observations types associated with the current profile
-     real    :: project !< e.g. FGGE, COARE, ACCE, ...
-     real    :: probe !< MBT, XBT, drifting buoy
-     real    :: ref_inst !< instrument (thermograph, hull sensor, ...)
-     integer :: wod_cast_num !< NODC world ocean dataset unique id
-     real    :: fix_depth !< adjust profile depths (for XBT drop rate corrections)
-     real    :: ocn_vehicle !< ocean vehicle type
-     real    :: database_id !< a unique profile id
      integer :: levels !< number of levels in the current profile
      integer :: basin_mask !<1:Southern Ocean, 2:Atlantic Ocean, 3:Pacific Ocean,
                            !! 4:Arctic Ocean, 5:Indian Ocean, 6:Mediterranean Sea, 7:Black Sea,
@@ -74,49 +70,46 @@ module ocean_da_types_mod
      real :: lat, lon !< latitude and longitude (degrees E and N)
      logical :: accepted !< logical flag to disable a profile
      integer :: nlinks !< number of links used to construct the profile (when reading from disk)
+     type(time_type) :: time_window
+     real :: obs_error
+     integer :: impact_levels
+     real :: loc_dist
+     logical :: temp_to_salt, salt_to_temp
      type(ocean_profile_type), pointer :: next=>NULL() !< all profiles are stored as linked list.
      type(ocean_profile_type), pointer :: prev=>NULL()
      type(ocean_profile_type), pointer :: cnext=>NULL() ! current profiles are stored as linked list.
      type(ocean_profile_type), pointer :: cprev=>NULL()
      integer :: nbr_xi, nbr_yi ! nearest neighbor model gridpoint for the profile
      real :: nbr_dist ! distance to nearest neighbor model gridpoint
+     logical :: compute
      real, dimension(:), pointer :: depth
-     real, dimension(:), pointer :: data_t => NULL(), data_s => NULL()
-     real, dimension(:), pointer :: data
-     !integer, dimension(:), pointer :: flag_t
-     !integer, dimension(:), pointer :: flag_s ! level-by-level flags for salinity
+     real, dimension(:), pointer :: data => NULL()
+     real, dimension(:), pointer :: forecast => NULL()
+     real, dimension(:), pointer :: analysis => NULL()
      !::sdu:: For now ECDA use flag as a logical, will likely change in future releases.
-     logical, dimension(:), pointer :: flag
-     real    :: temp_err, salt_err ! measurement error
-     !real, dimension(:), pointer :: ms_t ! ms temperature by level
-     !real, dimension(:), pointer :: ms_s ! ms salinity by level
-     real, dimension(:), pointer :: ms_inv => NULL()
-     real, dimension(:), pointer :: ms => NULL()
-!     type(obs_def_type), dimension(:), pointer :: obs_def => NULL()
+     real, dimension(:), pointer :: flag
+     type(forward_operator_type), dimension(:), pointer :: obs_def => NULL()
      type(time_type) :: time
-     integer         :: yyyy
-     integer         :: mmdd
-     !type(time_type), pointer :: Model_time ! each profile can be associated with a first-guess field with an associated time and grid
-     !type(grid_type), pointer :: Model_grid
      real :: i_index, j_index ! model longitude and latitude indices respectively
      real, dimension(:), pointer :: k_index ! model depth indices
      type(time_type) :: tdiff      ! positive difference between model time and observation time
   end type ocean_profile_type
 
+  type, public :: forward_operator_type
+     integer :: num
+     integer, pointer :: state_var_index(:)
+     real, pointer :: coef(:)
+  end type forward_operator_type
+
 !> Grid information for ODA purposes, including arrays of
 ! lat, lon, depth, thickness, basin and land mask
   type, public :: grid_type
      real, pointer, dimension(:,:) :: x=>NULL(), y=>NULL()
-     !real, pointer, dimension(:,:) :: x_bound=>NULL(), y_bound=>NULL()
-     !real, pointer, dimension(:,:) :: dx=>NULL(), dy=>NULL()
      real, pointer, dimension(:,:,:) :: z=>NULL()
      real, pointer, dimension(:,:,:) :: h=>NULL()
-     !real, pointer, dimension(:) :: z_bound=>NULL()
-     !real, pointer, dimension(:) :: dz => NULL()
      real, pointer, dimension(:,:) :: basin_mask => NULL()
      real, pointer, dimension(:,:,:) :: mask => NULL()
-     !type(domain2d), pointer :: Dom ! FMS domain type
-     !logical :: cyclic
+     real, pointer, dimension(:,:) :: bathyT => NULL()
      integer :: ni, nj, nk
   end type grid_type
 
