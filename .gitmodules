@@ -1,3 +1,6 @@
 [submodule "pkg/geoKdTree"]
 	path = pkg/geoKdTree
 	url = https://github.com/JCSDA/geoKdTree.git
+[submodule "pkg/ensemble_filter"]
+	path = pkg/ensemble_filter
+	url = git@github.com:MJHarrison-GFDL/ensemble_filter.git
